@@ -1,0 +1,70 @@
+import os
+import csv,codecs,dateparser
+import xlwings as xw
+from tkinter import Tk,filedialog
+
+Tk().withdraw()
+fname = filedialog.askopenfilename(filetypes = [("fichier CSV", "*.csv"),("Tous les fichiers","*")])
+file = codecs.open(fname, "rb", "utf-16")
+file.readline()
+
+nombre_ligne = 0
+patient = ""
+nombre_sachet = 0
+service = 0
+
+# Création du tableau de résultat
+tableau = [["Date"]]
+filereader = csv.reader(file, delimiter = ",")
+
+# Parser le csv et renseigner le tableau
+for row in filereader:
+    if "Reproduire" not in row[4]:
+        if row[8] != patient and patient != "" or nombre_sachet != row[9] and patient != "":
+            tableau[-1][tableau[0].index(service)] += int(nombre_sachet)
+            nombre_ligne += int(nombre_sachet)
+        if row[0] not in tableau[-1]:
+            tableau.append([row[0]])
+            for i in range(len(tableau[0])-1):
+                tableau[-1].append(0)
+        if "Sachet mono dose non nominatif" not in row[4]:
+                patient = row[8]
+                nombre_sachet = row[9]
+                service = int(row[8][-4:])
+        else  :
+                patient = ""
+                nombre_sachet = 0
+                service = 0
+        if service not in tableau[0] and service != 0:
+            i = 1
+            if len(tableau[0])>1:
+                while service > tableau[0][i]:
+                    i+=1
+                    if i == len(tableau[0]):
+                        break
+            tableau[0].insert(i,service)
+            for ligne in tableau[1:]:
+                ligne.insert(tableau[0].index(service),0)
+            
+tableau[-1][tableau[0].index(service)] += int(nombre_sachet)
+nombre_ligne += int(nombre_sachet)
+        
+# Modification des dates du format texte vers le format date et suppression des 0 dans la variable tableau
+for i in tableau[1:]:
+    i[0] = dateparser.parse(i[0]).date()
+    for j in range(1,len(tableau[0])-1):
+        if i[j] == 0:
+            i[j] = None
+
+# Création d'un fichier Excel et écriture du contenu de la variable tableau
+reponse = ""
+while reponse != "O":
+    reponse = input("Veuillez ouvrir un nouveau document Excel, voulez-vous continuer? O/N ")
+wb = xw.Book()
+xw.Range("A1").expand().value = tableau
+
+print(fname)
+print("Nombre de sachets traités : ", nombre_ligne, ".")
+
+file.close()
+os.system("pause")
